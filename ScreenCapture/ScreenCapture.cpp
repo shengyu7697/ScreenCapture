@@ -5,11 +5,16 @@
 #include "ScreenCapture.h"
 
 #define MAX_LOADSTRING 100
+#define BMP  1
+#define JPEG 2
+#define PNG  3
 
 // Global Variables:
 HINSTANCE hInst;								// current instance
 TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
+HMENU hMenu;
+int imageType = BMP;
 
 // Forward declarations of functions included in this code module:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
@@ -152,10 +157,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case IDM_FULLSCREEN:
 			break;
 		case IDM_IMAGETYPE_BMP:
+			CheckMenuRadioItem(hMenu, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_BMP, MF_BYCOMMAND);
+			imageType = BMP;
 			break;
 		case IDM_IMAGETYPE_JPEG:
+			CheckMenuRadioItem(hMenu, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_JPEG, MF_BYCOMMAND);
+			imageType = JPEG;
 			break;
 		case IDM_IMAGETYPE_PNG:
+			CheckMenuRadioItem(hMenu, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_PNG, MF_BYCOMMAND);
+			imageType = PNG;
 			break;
 		case IDM_ABOUT:
 			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
@@ -171,6 +182,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		hdc = BeginPaint(hWnd, &ps);
 		// TODO: Add any drawing code here...
 		EndPaint(hWnd, &ps);
+		break;
+	case WM_CREATE:
+		// Initialize something.
+		hMenu = GetMenu(hWnd);
+
+		// Set default image type
+		SendMessage(hWnd, WM_COMMAND, IDM_IMAGETYPE_BMP, 0);
 		break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
