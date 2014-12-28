@@ -23,6 +23,7 @@
 #define IDM_IMAGETYPE_BMP       32774
 #define IDM_IMAGETYPE_JPEG      32775
 #define IDM_IMAGETYPE_PNG       32776
+#define IDM_IMAGEFOLDER         32777
 // Next default values for new objects
 //
 #ifdef APSTUDIO_INVOKED

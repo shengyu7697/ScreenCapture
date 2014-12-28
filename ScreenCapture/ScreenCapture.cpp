@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "ScreenCapture.h"
+#include <Shlobj.h>
 
 #define MAX_LOADSTRING 100
 #define BMP  1
@@ -15,12 +16,14 @@ TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
 HMENU hMenu;
 int imageType = BMP;
+wchar_t *folder_path = NULL;
 
 // Forward declarations of functions included in this code module:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
 BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
+int SelectFolder(LPWSTR *ppszName);
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
                      HINSTANCE hPrevInstance,
@@ -168,6 +171,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			CheckMenuRadioItem(hMenu, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_PNG, MF_BYCOMMAND);
 			imageType = PNG;
 			break;
+		case IDM_IMAGEFOLDER:
+			SelectFolder(&folder_path);
+			break;
 		case IDM_ABOUT:
 			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 			break;
@@ -217,4 +223,61 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	}
 	return (INT_PTR)FALSE;
+}
+
+int SelectFolder(LPWSTR *ppszName)
+{
+	IFileOpenDialog *pfd;
+	HRESULT hr;
+
+	// CoCreate the dialog object.
+	hr = CoCreateInstance(CLSID_FileOpenDialog, NULL,
+		CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pfd));
+	if (FAILED(hr))
+		return 0;
+
+	DWORD dwOptions;
+	hr = pfd->GetOptions(&dwOptions);
+	if (FAILED(hr))
+	{
+		pfd->Release();
+		return 0;
+	}
+
+	hr = pfd->SetOptions(dwOptions | FOS_PICKFOLDERS);
+	if (FAILED(hr))
+	{
+		pfd->Release();
+		return 0;
+	}
+
+	// Show the Open dialog.
+	hr = pfd->Show(NULL);
+	if (FAILED(hr))
+	{
+		pfd->Release();
+		return 0;
+	}
+
+	// Obtain the result of the user interaction.
+	IShellItem *psi = NULL;
+	hr = pfd->GetResult(&psi);
+	if (FAILED(hr))
+	{
+		pfd->Release();
+		return 0;
+	}
+
+	hr = psi->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, ppszName);
+	if (FAILED(hr))
+	{
+		psi->Release();
+		pfd->Release();
+		return 0;
+	}
+
+	// Release
+	psi->Release();
+	pfd->Release();
+	return 1;
 }
