@@ -145,6 +145,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		// Parse the menu selections:
 		switch (wmId)
 		{
+		case IDM_SELECTION:
+			break;
+		case IDM_WINDOW:
+			break;
+		case IDM_FULLSCREEN:
+			break;
+		case IDM_IMAGETYPE_BMP:
+			break;
+		case IDM_IMAGETYPE_JPEG:
+			break;
+		case IDM_IMAGETYPE_PNG:
+			break;
 		case IDM_ABOUT:
 			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 			break;
