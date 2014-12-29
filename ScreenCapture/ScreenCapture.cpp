@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "ScreenCapture.h"
 #include <Shlobj.h>
+#pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 #define MAX_LOADSTRING 100
 #define BMP  1
@@ -15,6 +16,7 @@ HINSTANCE hInst;								// current instance
 TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
 HMENU hMenu;
+HWND hStatic1;
 int imageType = BMP;
 wchar_t *folder_path = NULL;
 
@@ -190,11 +192,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		EndPaint(hWnd, &ps);
 		break;
 	case WM_CREATE:
+		{
 		// Initialize something.
 		hMenu = GetMenu(hWnd);
+		hStatic1 = CreateWindowEx(NULL, TEXT("STATIC"), TEXT(""),
+			WS_CHILD | WS_VISIBLE, 10, 10, 200, 48,
+			hWnd, NULL, LPCREATESTRUCT(lParam)->hInstance, NULL);
+
+		// Set font.
+		int PointSize = 12;
+		hdc = GetDC(hWnd);
+		int nHeight = -MulDiv(PointSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
+		ReleaseDC(hWnd, hdc);
+		HFONT hFont = CreateFont(nHeight, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+			DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+			DEFAULT_QUALITY, DEFAULT_PITCH, TEXT("Arial"));
+		SendMessage(hStatic1, WM_SETFONT, (WPARAM)hFont, FALSE);
 
 		// Set default image type
 		SendMessage(hWnd, WM_COMMAND, IDM_IMAGETYPE_BMP, 0);
+		}
 		break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
