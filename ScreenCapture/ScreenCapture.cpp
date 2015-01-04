@@ -19,6 +19,10 @@ HMENU hMenu;
 HWND hStatic1;
 int imageType = BMP;
 wchar_t *folder_path = NULL;
+HDC hdcSnapshot;
+HBITMAP hbmSnapshot;
+int iXRes;
+int iYRes;
 
 // Forward declarations of functions included in this code module:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
@@ -26,6 +30,7 @@ BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 int SelectFolder(LPWSTR *ppszName);
+void ScreenSnapshot(HWND hWnd);
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
                      HINSTANCE hPrevInstance,
@@ -156,6 +161,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		switch (wmId)
 		{
 		case IDM_SELECTION:
+			ScreenSnapshot(hWnd);
+
+			SetWindowLong(hWnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+			SetWindowPos(hWnd, HWND_TOP, 0, 0, iXRes, iYRes, SWP_FRAMECHANGED);
+			SetMenu(hWnd, NULL);
 			break;
 		case IDM_WINDOW:
 			break;
@@ -186,9 +196,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			return DefWindowProc(hWnd, message, wParam, lParam);
 		}
 		break;
+	case WM_LBUTTONDOWN:
+		SetWindowLong(hWnd, GWL_STYLE, WS_OVERLAPPEDWINDOW | WS_VISIBLE);
+		SetMenu(hWnd, hMenu);
+		break;
+	case WM_LBUTTONUP:
+		break;
+	case WM_MOUSEMOVE:
+		break;
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
 		// TODO: Add any drawing code here...
+		StretchBlt(hdc, 0, 0, iXRes, iYRes, hdcSnapshot, 0, 0, iXRes, iYRes, SRCCOPY);
 		EndPaint(hWnd, &ps);
 		break;
 	case WM_CREATE:
@@ -196,7 +215,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		// Initialize something.
 		hMenu = GetMenu(hWnd);
 		hStatic1 = CreateWindowEx(NULL, TEXT("STATIC"), TEXT(""),
-			WS_CHILD | WS_VISIBLE, 10, 10, 200, 48,
+			WS_CHILD, 10, 10, 200, 48,
 			hWnd, NULL, LPCREATESTRUCT(lParam)->hInstance, NULL);
 
 		// Set font.
@@ -208,6 +227,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
 			DEFAULT_QUALITY, DEFAULT_PITCH, TEXT("Arial"));
 		SendMessage(hStatic1, WM_SETFONT, (WPARAM)hFont, FALSE);
+
+		// Get resolution.
+		iXRes = GetSystemMetrics(SM_CXSCREEN);
+		iYRes = GetSystemMetrics(SM_CYSCREEN);
 
 		// Set default image type
 		SendMessage(hWnd, WM_COMMAND, IDM_IMAGETYPE_BMP, 0);
@@ -297,4 +320,53 @@ int SelectFolder(LPWSTR *ppszName)
 	psi->Release();
 	pfd->Release();
 	return 1;
+}
+
+void ScreenSnapshot(HWND hWnd)
+{
+	HDC hdcScreen;
+
+	// Create a normal DC and a memory DC for the entire screen. The
+	// normal DC provides a "snapshot" of the screen contents. The
+	// memory DC keeps a copy of this "snapshot" in the associated
+	// bitmap.
+	hdcScreen = CreateDC(TEXT("DISPLAY"), NULL, NULL, NULL);
+	hdcSnapshot = CreateCompatibleDC(hdcScreen);
+
+	// Create a compatible bitmap for hdcScreen.
+	hbmSnapshot = CreateCompatibleBitmap(hdcScreen,
+		GetDeviceCaps(hdcScreen, HORZRES),
+		GetDeviceCaps(hdcScreen, VERTRES));
+
+	if (hbmSnapshot == 0) {
+		MessageBox(hWnd,
+			TEXT("Can't create a compatible bitmap."),
+			TEXT("Error"), MB_OK);
+	}
+
+	// Select the bitmaps into the compatible DC.
+	if (!SelectObject(hdcSnapshot, hbmSnapshot)) {
+		MessageBox(hWnd,
+			TEXT("SelectObject Failed"),
+			TEXT("Error"), MB_OK);
+	}
+
+	// Hide the application window.
+	ShowWindow(hWnd, SW_HIDE);
+	Sleep(100);
+
+	// Copy color data for the entire display into a
+	// bitmap that is selected into a compatible DC.
+	if (!BitBlt(hdcSnapshot, 0, 0, iXRes, iYRes,
+		hdcScreen, 0, 0, SRCCOPY)) {
+			MessageBox(hWnd,
+			TEXT("BitBlt Failed"),
+			TEXT("Error"), MB_OK);
+	}
+
+	// Redraw the application window.
+	ShowWindow(hWnd, SW_SHOW);
+
+	// Release
+	DeleteDC(hdcScreen);
 }
