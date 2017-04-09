@@ -204,6 +204,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_MOUSEMOVE:
 		break;
+	case WM_KEYDOWN:
+		if (wParam == VK_ESCAPE) // press ESC to exit
+			DestroyWindow(hWnd);
+		break;
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
 		// TODO: Add any drawing code here...
