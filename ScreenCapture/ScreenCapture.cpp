@@ -123,7 +123,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hInst = hInstance; // Store instance handle in our global variable
 
    hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      100, 100, 400, 300, NULL, NULL, hInstance, NULL);
+	   100, 100, 400, 300, NULL, NULL, hInstance, NULL);
 
    if (!hWnd)
    {
@@ -161,15 +161,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		switch (wmId)
 		{
 		case IDM_SELECTION:
-			ScreenSnapshot(hWnd);
-
-			SetWindowLong(hWnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+			/*SetWindowLong(hWnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
 			SetWindowPos(hWnd, HWND_TOP, 0, 0, iXRes, iYRes, SWP_FRAMECHANGED);
-			SetMenu(hWnd, NULL);
+			SetMenu(hWnd, NULL);*/
 			break;
 		case IDM_WINDOW:
 			break;
 		case IDM_FULLSCREEN:
+			ScreenSnapshot(hWnd);
 			break;
 		case IDM_IMAGETYPE_BMP:
 			CheckMenuRadioItem(hMenu, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_BMP, MF_BYCOMMAND);
@@ -197,8 +196,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		break;
 	case WM_LBUTTONDOWN:
-		SetWindowLong(hWnd, GWL_STYLE, WS_OVERLAPPEDWINDOW | WS_VISIBLE);
-		SetMenu(hWnd, hMenu);
+		/*SetWindowLong(hWnd, GWL_STYLE, WS_OVERLAPPEDWINDOW | WS_VISIBLE);
+		SetMenu(hWnd, hMenu);*/
 		break;
 	case WM_LBUTTONUP:
 		break;
@@ -211,7 +210,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
 		// TODO: Add any drawing code here...
-		StretchBlt(hdc, 0, 0, iXRes, iYRes, hdcSnapshot, 0, 0, iXRes, iYRes, SRCCOPY);
+
+		// Get window size.
+		RECT rect;
+		int width;
+		int height;
+		if (GetWindowRect(hWnd, &rect))
+		{
+			width = rect.right - rect.left;
+			height = rect.bottom - rect.top;
+		}
+		// Draw snapshoted image.
+		SetStretchBltMode(hdc, HALFTONE); // prevent distortion (STRETCH_DELETESCANS or HALFTONE)
+		StretchBlt(hdc, 0, 0, width - 16, height - 58, hdcSnapshot, 0, 0, iXRes, iYRes, SRCCOPY);
+
 		EndPaint(hWnd, &ps);
 		break;
 	case WM_CREATE:
@@ -238,6 +250,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		// Set default image type
 		SendMessage(hWnd, WM_COMMAND, IDM_IMAGETYPE_BMP, 0);
+
+		// Disable non-finish feature
+		EnableMenuItem(hMenu, IDM_SELECTION, MF_DISABLED);
+		EnableMenuItem(hMenu, IDM_WINDOW, MF_DISABLED);
 		}
 		break;
 	case WM_DESTROY:
