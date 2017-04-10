@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "ScreenCapture.h"
+#include "Screenshot.h"
 #include <Shlobj.h>
 #pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
@@ -10,19 +11,16 @@
 #define BMP  1
 #define JPEG 2
 #define PNG  3
+#define HOTKEY_SNAPSHOT 1
 
 // Global Variables:
 HINSTANCE hInst;								// current instance
 TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
 HMENU hMenu;
-HWND hStatic1;
 int imageType = BMP;
 wchar_t *folder_path = NULL;
-HDC hdcSnapshot;
-HBITMAP hbmSnapshot;
-int iXRes;
-int iYRes;
+Screenshot screenshot;
 
 // Forward declarations of functions included in this code module:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
@@ -30,7 +28,7 @@ BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 int SelectFolder(LPWSTR *ppszName);
-void ScreenSnapshot(HWND hWnd);
+void GetWindowSize(HWND hWnd, int &width, int &height);
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
                      HINSTANCE hPrevInstance,
@@ -161,26 +159,32 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		switch (wmId)
 		{
 		case IDM_SELECTION:
-			/*SetWindowLong(hWnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
-			SetWindowPos(hWnd, HWND_TOP, 0, 0, iXRes, iYRes, SWP_FRAMECHANGED);
-			SetMenu(hWnd, NULL);*/
 			break;
 		case IDM_WINDOW:
 			break;
 		case IDM_FULLSCREEN:
-			ScreenSnapshot(hWnd);
-			break;
-		case IDM_IMAGETYPE_BMP:
-			CheckMenuRadioItem(hMenu, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_BMP, MF_BYCOMMAND);
-			imageType = BMP;
-			break;
-		case IDM_IMAGETYPE_JPEG:
-			CheckMenuRadioItem(hMenu, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_JPEG, MF_BYCOMMAND);
-			imageType = JPEG;
+			screenshot.StartScreenshot(hWnd);
+
+			if (imageType == PNG)
+				screenshot.SaveScreenshot(TEXT(".png"));
+			else if (imageType == JPEG)
+				screenshot.SaveScreenshot(TEXT(".jpg"));
+			else if (imageType == BMP)
+				screenshot.SaveScreenshot(TEXT(".bmp"));
+			else
+				screenshot.SaveScreenshot(TEXT(".png"));
 			break;
 		case IDM_IMAGETYPE_PNG:
-			CheckMenuRadioItem(hMenu, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_PNG, MF_BYCOMMAND);
+			CheckMenuRadioItem(hMenu, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_PNG, MF_BYCOMMAND);
 			imageType = PNG;
+			break;
+		case IDM_IMAGETYPE_JPEG:
+			CheckMenuRadioItem(hMenu, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_JPEG, MF_BYCOMMAND);
+			imageType = JPEG;
+			break;
+		case IDM_IMAGETYPE_BMP:
+			CheckMenuRadioItem(hMenu, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_BMP, MF_BYCOMMAND);
+			imageType = BMP;
 			break;
 		case IDM_IMAGEFOLDER:
 			SelectFolder(&folder_path);
@@ -196,8 +200,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		break;
 	case WM_LBUTTONDOWN:
-		/*SetWindowLong(hWnd, GWL_STYLE, WS_OVERLAPPEDWINDOW | WS_VISIBLE);
-		SetMenu(hWnd, hMenu);*/
 		break;
 	case WM_LBUTTONUP:
 		break;
@@ -207,22 +209,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		if (wParam == VK_ESCAPE) // press ESC to exit
 			DestroyWindow(hWnd);
 		break;
+	case WM_HOTKEY:
+		switch (wParam)
+		{
+		case HOTKEY_SNAPSHOT:
+			SendMessage(hWnd, WM_COMMAND, IDM_FULLSCREEN, 0);
+			break;
+		}
+		break;
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
 		// TODO: Add any drawing code here...
 
 		// Get window size.
-		RECT rect;
 		int width;
 		int height;
-		if (GetWindowRect(hWnd, &rect))
-		{
-			width = rect.right - rect.left;
-			height = rect.bottom - rect.top;
-		}
+		GetWindowSize(hWnd, width, height);
+
 		// Draw snapshoted image.
 		SetStretchBltMode(hdc, HALFTONE); // prevent distortion (STRETCH_DELETESCANS or HALFTONE)
-		StretchBlt(hdc, 0, 0, width - 16, height - 58, hdcSnapshot, 0, 0, iXRes, iYRes, SRCCOPY);
+		StretchBlt(hdc, 0, 0, width - 16, height - 58,
+			screenshot.hdcSnapshot, 0, 0, screenshot.GetScreenResolutionX(), screenshot.GetScreenResolutionY(), SRCCOPY);
 
 		EndPaint(hWnd, &ps);
 		break;
@@ -230,30 +237,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 		// Initialize something.
 		hMenu = GetMenu(hWnd);
-		hStatic1 = CreateWindowEx(NULL, TEXT("STATIC"), TEXT(""),
-			WS_CHILD, 10, 10, 200, 48,
-			hWnd, NULL, LPCREATESTRUCT(lParam)->hInstance, NULL);
 
-		// Set font.
-		int PointSize = 12;
-		hdc = GetDC(hWnd);
-		int nHeight = -MulDiv(PointSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
-		ReleaseDC(hWnd, hdc);
-		HFONT hFont = CreateFont(nHeight, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-			DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-			DEFAULT_QUALITY, DEFAULT_PITCH, TEXT("Arial"));
-		SendMessage(hStatic1, WM_SETFONT, (WPARAM)hFont, FALSE);
-
-		// Get resolution.
-		iXRes = GetSystemMetrics(SM_CXSCREEN);
-		iYRes = GetSystemMetrics(SM_CYSCREEN);
+		// Register hot key.
+		RegisterHotKey(hWnd, HOTKEY_SNAPSHOT, MOD_NOREPEAT, VK_SNAPSHOT);
+		RegisterHotKey(hWnd, HOTKEY_SNAPSHOT, MOD_CONTROL, VK_F1);
 
 		// Set default image type
-		SendMessage(hWnd, WM_COMMAND, IDM_IMAGETYPE_BMP, 0);
+		SendMessage(hWnd, WM_COMMAND, IDM_IMAGETYPE_PNG, 0);
 
 		// Disable non-finish feature
 		EnableMenuItem(hMenu, IDM_SELECTION, MF_DISABLED);
 		EnableMenuItem(hMenu, IDM_WINDOW, MF_DISABLED);
+		EnableMenuItem(hMenu, IDM_IMAGEFOLDER, MF_DISABLED);
 		}
 		break;
 	case WM_DESTROY:
@@ -342,51 +337,12 @@ int SelectFolder(LPWSTR *ppszName)
 	return 1;
 }
 
-void ScreenSnapshot(HWND hWnd)
+void GetWindowSize(HWND hWnd, int &width, int &height)
 {
-	HDC hdcScreen;
-
-	// Create a normal DC and a memory DC for the entire screen. The
-	// normal DC provides a "snapshot" of the screen contents. The
-	// memory DC keeps a copy of this "snapshot" in the associated
-	// bitmap.
-	hdcScreen = CreateDC(TEXT("DISPLAY"), NULL, NULL, NULL);
-	hdcSnapshot = CreateCompatibleDC(hdcScreen);
-
-	// Create a compatible bitmap for hdcScreen.
-	hbmSnapshot = CreateCompatibleBitmap(hdcScreen,
-		GetDeviceCaps(hdcScreen, HORZRES),
-		GetDeviceCaps(hdcScreen, VERTRES));
-
-	if (hbmSnapshot == 0) {
-		MessageBox(hWnd,
-			TEXT("Can't create a compatible bitmap."),
-			TEXT("Error"), MB_OK);
+	RECT rect;
+	if (GetWindowRect(hWnd, &rect))
+	{
+		width = rect.right - rect.left;
+		height = rect.bottom - rect.top;
 	}
-
-	// Select the bitmaps into the compatible DC.
-	if (!SelectObject(hdcSnapshot, hbmSnapshot)) {
-		MessageBox(hWnd,
-			TEXT("SelectObject Failed"),
-			TEXT("Error"), MB_OK);
-	}
-
-	// Hide the application window.
-	ShowWindow(hWnd, SW_HIDE);
-	Sleep(100);
-
-	// Copy color data for the entire display into a
-	// bitmap that is selected into a compatible DC.
-	if (!BitBlt(hdcSnapshot, 0, 0, iXRes, iYRes,
-		hdcScreen, 0, 0, SRCCOPY)) {
-			MessageBox(hWnd,
-			TEXT("BitBlt Failed"),
-			TEXT("Error"), MB_OK);
-	}
-
-	// Redraw the application window.
-	ShowWindow(hWnd, SW_SHOW);
-
-	// Release
-	DeleteDC(hdcScreen);
 }

@@ -20,9 +20,9 @@
 #define IDM_SELECTION           32771
 #define IDM_WINDOW              32772
 #define IDM_FULLSCREEN          32773
-#define IDM_IMAGETYPE_BMP       32774
+#define IDM_IMAGETYPE_PNG       32774
 #define IDM_IMAGETYPE_JPEG      32775
-#define IDM_IMAGETYPE_PNG       32776
+#define IDM_IMAGETYPE_BMP       32776
 #define IDM_IMAGEFOLDER         32777
 // Next default values for new objects
 //
