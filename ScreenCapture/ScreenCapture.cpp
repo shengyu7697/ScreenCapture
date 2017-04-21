@@ -14,13 +14,14 @@
 #define HOTKEY_SNAPSHOT 1
 
 // Global Variables:
-HINSTANCE hInst;								// current instance
-TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
-TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
-HMENU hMenu;
-int imageType = BMP;
-wchar_t *folder_path = NULL;
-Screenshot screenshot;
+HINSTANCE g_hInst;								// current instance
+TCHAR g_szTitle[MAX_LOADSTRING];				// The title bar text
+TCHAR g_szWindowClass[MAX_LOADSTRING];			// the main window class name
+HMENU g_hMenu;
+HWND g_hStatusbar;
+int g_imageType = BMP;
+wchar_t *g_folderPath = NULL;
+Screenshot g_screenshot;
 
 // Forward declarations of functions included in this code module:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
@@ -43,8 +44,8 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	HACCEL hAccelTable;
 
 	// Initialize global strings
-	LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-	LoadString(hInstance, IDC_SCREENCAPTURE, szWindowClass, MAX_LOADSTRING);
+	LoadString(hInstance, IDS_APP_TITLE, g_szTitle, MAX_LOADSTRING);
+	LoadString(hInstance, IDC_SCREENCAPTURE, g_szWindowClass, MAX_LOADSTRING);
 	MyRegisterClass(hInstance);
 
 	// Perform application initialization:
@@ -98,7 +99,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.hCursor		= LoadCursor(NULL, IDC_ARROW);
 	wcex.hbrBackground	= (HBRUSH)(COLOR_WINDOW);
 	wcex.lpszMenuName	= MAKEINTRESOURCE(IDC_SCREENCAPTURE);
-	wcex.lpszClassName	= szWindowClass;
+	wcex.lpszClassName	= g_szWindowClass;
 	wcex.hIconSm		= LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
 	return RegisterClassEx(&wcex);
@@ -118,9 +119,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    HWND hWnd;
 
-   hInst = hInstance; // Store instance handle in our global variable
+   g_hInst = hInstance; // Store instance handle in our global variable
 
-   hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+   hWnd = CreateWindow(g_szWindowClass, g_szTitle, WS_OVERLAPPEDWINDOW,
 	   100, 100, 400, 300, NULL, NULL, hInstance, NULL);
 
    if (!hWnd)
@@ -163,35 +164,35 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case IDM_WINDOW:
 			break;
 		case IDM_FULLSCREEN:
-			screenshot.StartScreenshot(hWnd);
+			g_screenshot.StartScreenshot(hWnd);
 			PlaySound(TEXT("sound/shutter.wav"), NULL, SND_ASYNC);
 
-			if (imageType == PNG)
-				screenshot.SaveScreenshot(TEXT(".png"));
-			else if (imageType == JPEG)
-				screenshot.SaveScreenshot(TEXT(".jpg"));
-			else if (imageType == BMP)
-				screenshot.SaveScreenshot(TEXT(".bmp"));
+			if (g_imageType == PNG)
+				g_screenshot.SaveScreenshot(TEXT(".png"));
+			else if (g_imageType == JPEG)
+				g_screenshot.SaveScreenshot(TEXT(".jpg"));
+			else if (g_imageType == BMP)
+				g_screenshot.SaveScreenshot(TEXT(".bmp"));
 			else
-				screenshot.SaveScreenshot(TEXT(".png"));
+				g_screenshot.SaveScreenshot(TEXT(".png"));
 			break;
 		case IDM_IMAGETYPE_PNG:
-			CheckMenuRadioItem(hMenu, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_PNG, MF_BYCOMMAND);
-			imageType = PNG;
+			CheckMenuRadioItem(g_hMenu, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_PNG, MF_BYCOMMAND);
+			g_imageType = PNG;
 			break;
 		case IDM_IMAGETYPE_JPEG:
-			CheckMenuRadioItem(hMenu, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_JPEG, MF_BYCOMMAND);
-			imageType = JPEG;
+			CheckMenuRadioItem(g_hMenu, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_JPEG, MF_BYCOMMAND);
+			g_imageType = JPEG;
 			break;
 		case IDM_IMAGETYPE_BMP:
-			CheckMenuRadioItem(hMenu, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_BMP, MF_BYCOMMAND);
-			imageType = BMP;
+			CheckMenuRadioItem(g_hMenu, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_BMP, MF_BYCOMMAND);
+			g_imageType = BMP;
 			break;
 		case IDM_IMAGEFOLDER:
-			SelectFolder(&folder_path);
+			SelectFolder(&g_folderPath);
 			break;
 		case IDM_ABOUT:
-			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+			DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 			break;
 		case IDM_EXIT:
 			DestroyWindow(hWnd);
@@ -230,14 +231,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		// Draw snapshoted image.
 		SetStretchBltMode(hdc, HALFTONE); // prevent distortion (STRETCH_DELETESCANS or HALFTONE)
 		StretchBlt(hdc, 0, 0, width - 16, height - 58,
-			screenshot.hdcSnapshot, 0, 0, screenshot.GetScreenResolutionX(), screenshot.GetScreenResolutionY(), SRCCOPY);
+			g_screenshot.hdcSnapshot, 0, 0, g_screenshot.GetScreenResolutionX(), g_screenshot.GetScreenResolutionY(), SRCCOPY);
 
 		EndPaint(hWnd, &ps);
 		break;
 	case WM_CREATE:
 		{
 		// Initialize something.
-		hMenu = GetMenu(hWnd);
+		g_hMenu = GetMenu(hWnd);
 
 		// Register hot key.
 		RegisterHotKey(hWnd, HOTKEY_SNAPSHOT, MOD_NOREPEAT, VK_SNAPSHOT);
@@ -247,9 +248,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		SendMessage(hWnd, WM_COMMAND, IDM_IMAGETYPE_PNG, 0);
 
 		// Disable non-finish feature
-		EnableMenuItem(hMenu, IDM_SELECTION, MF_DISABLED);
-		EnableMenuItem(hMenu, IDM_WINDOW, MF_DISABLED);
-		EnableMenuItem(hMenu, IDM_IMAGEFOLDER, MF_DISABLED);
+		EnableMenuItem(g_hMenu, IDM_SELECTION, MF_DISABLED);
+		EnableMenuItem(g_hMenu, IDM_WINDOW, MF_DISABLED);
+		EnableMenuItem(g_hMenu, IDM_IMAGEFOLDER, MF_DISABLED);
 		}
 		break;
 	case WM_DESTROY:
