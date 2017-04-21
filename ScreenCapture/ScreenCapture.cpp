@@ -164,6 +164,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		case IDM_FULLSCREEN:
 			screenshot.StartScreenshot(hWnd);
+			PlaySound(TEXT("sound/shutter.wav"), NULL, SND_ASYNC);
 
 			if (imageType == PNG)
 				screenshot.SaveScreenshot(TEXT(".png"));
