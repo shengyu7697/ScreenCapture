@@ -6,6 +6,8 @@
 #include "Screenshot.h"
 #include <Shlobj.h>
 #pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+#include <Commctrl.h>
+#pragma comment(lib, "comctl32.lib")
 
 #define MAX_LOADSTRING 100
 #define BMP  1
@@ -28,6 +30,8 @@ ATOM				MyRegisterClass(HINSTANCE hInstance);
 BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
+HWND CreateStatusBar(HWND hWnd, int idStatus, HINSTANCE hinst);
+void OnStatusbarSize(HWND hWnd, HWND hStatusbar);
 int SelectFolder(LPWSTR *ppszName);
 void GetWindowSize(HWND hWnd, int &width, int &height);
 
@@ -164,9 +168,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case IDM_WINDOW:
 			break;
 		case IDM_FULLSCREEN:
+			SendMessage(g_hStatusbar, SB_SETTEXT, 1 | SBT_POPOUT, (LPARAM)TEXT("Screenshot ..."));
 			g_screenshot.StartScreenshot(hWnd);
 			PlaySound(TEXT("sound/shutter.wav"), NULL, SND_ASYNC);
 
+			SendMessage(g_hStatusbar, SB_SETTEXT, 1 | SBT_POPOUT, (LPARAM)TEXT("Save ..."));
 			if (g_imageType == PNG)
 				g_screenshot.SaveScreenshot(TEXT(".png"));
 			else if (g_imageType == JPEG)
@@ -175,6 +181,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				g_screenshot.SaveScreenshot(TEXT(".bmp"));
 			else
 				g_screenshot.SaveScreenshot(TEXT(".png"));
+			SendMessage(g_hStatusbar, SB_SETTEXT, 1 | SBT_POPOUT, (LPARAM)TEXT("Saved"));
 			break;
 		case IDM_IMAGETYPE_PNG:
 			CheckMenuRadioItem(g_hMenu, IDM_IMAGETYPE_PNG, IDM_IMAGETYPE_BMP, IDM_IMAGETYPE_PNG, MF_BYCOMMAND);
@@ -223,22 +230,31 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		hdc = BeginPaint(hWnd, &ps);
 		// TODO: Add any drawing code here...
 
-		// Get window size.
-		int width;
-		int height;
-		GetWindowSize(hWnd, width, height);
+		int nStatusbarW;
+		int nStatusbarH;
+		GetWindowSize(g_hStatusbar, nStatusbarW, nStatusbarH);
+
+		RECT rcClient;
+		GetClientRect(hWnd, &rcClient);
 
 		// Draw snapshoted image.
 		SetStretchBltMode(hdc, HALFTONE); // prevent distortion (STRETCH_DELETESCANS or HALFTONE)
-		StretchBlt(hdc, 0, 0, width - 16, height - 58,
+		StretchBlt(hdc, 0, 0, rcClient.right, rcClient.bottom - nStatusbarH,
 			g_screenshot.hdcSnapshot, 0, 0, g_screenshot.GetScreenResolutionX(), g_screenshot.GetScreenResolutionY(), SRCCOPY);
 
 		EndPaint(hWnd, &ps);
+		break;
+	case WM_SIZE:
+		OnStatusbarSize(hWnd, g_hStatusbar);
 		break;
 	case WM_CREATE:
 		{
 		// Initialize something.
 		g_hMenu = GetMenu(hWnd);
+
+		// Create status bar.
+		g_hStatusbar = CreateStatusBar(hWnd, 0, g_hInst);
+		SendMessage(g_hStatusbar, SB_SETTEXT, 0, (LPARAM)TEXT("Press PrintScreen or Ctrl+F1 to Capture Screen."));
 
 		// Register hot key.
 		RegisterHotKey(hWnd, HOTKEY_SNAPSHOT, MOD_NOREPEAT, VK_SNAPSHOT);
@@ -280,6 +296,56 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	}
 	return (INT_PTR)FALSE;
+}
+
+// Description: 
+//   Creates a status bar and divides it into the specified number of parts.
+// Parameters:
+//   hWnd - parent window for the status bar.
+//   idStatus - child window identifier of the status bar.
+//   hinst - handle to the application instance.
+//   cParts - number of parts into which to divide the status bar.
+// Returns:
+//   The handle to the status bar.
+//
+HWND CreateStatusBar(HWND hWnd, int idStatus, HINSTANCE hinst)
+{
+	HWND hStatusbar;
+
+	// Ensure that the common control DLL is loaded.
+	InitCommonControls();
+
+	// Create the status bar.
+	hStatusbar = CreateWindowEx(
+		0,                       // no extended styles
+		STATUSCLASSNAME,         // name of status bar class
+		(PCTSTR)NULL,            // no text when first created
+		SBARS_SIZEGRIP |         // includes a sizing grip
+		WS_CHILD | WS_VISIBLE,   // creates a visible child window
+		0, 0, 0, 0,              // ignores size and position
+		hWnd,                    // handle to parent window
+		(HMENU)idStatus,         // child window identifier
+		hinst,                   // handle to application instance
+		NULL);                   // no window creation data
+
+	OnStatusbarSize(hWnd, hStatusbar);
+
+	return hStatusbar;
+}
+
+// Process the WM_SIZE message
+void OnStatusbarSize(HWND hWnd, HWND hStatusbar)
+{
+	// Get the coordinates of the parent window's client area.
+	RECT rcClient;
+	GetClientRect(hWnd, &rcClient);
+
+	// Tell the status bar to create the window parts.
+	int nParts[] = { rcClient.right - 100, rcClient.right }; // 2 Parts
+	SendMessage(hStatusbar, SB_SETPARTS, (WPARAM)2, (LPARAM)nParts); // 2 Parts
+
+	// Resize statusbar so it's always same width as parent's client area
+	SendMessage(hStatusbar, WM_SIZE, 0, 0);
 }
 
 int SelectFolder(LPWSTR *ppszName)
