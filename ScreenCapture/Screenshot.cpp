@@ -58,6 +58,12 @@ void Screenshot::StartScreenshot(HWND hWnd)
 	// Redraw the application window.
 	ShowWindow(hWnd, SW_SHOW);
 
+	// Copy Bitmap to Clipboard
+	OpenClipboard(hWnd);
+	EmptyClipboard();
+	SetClipboardData(CF_BITMAP, hbmSnapshot);
+	CloseClipboard();
+
 	// Delete
 	DeleteDC(hdcScreen);
 }
