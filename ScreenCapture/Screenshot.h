@@ -2,12 +2,12 @@
 class Screenshot
 {
 private:
-	HBITMAP hbmSnapshot = NULL;
+	HBITMAP hBitmapSnapshot = NULL;
 	int mResX = -1;
 	int mResY = -1;
 
 public:
-	HDC hdcSnapshot = NULL;
+	HDC hMemDC = NULL;
 
 private:
 	void GetScreenResolution();

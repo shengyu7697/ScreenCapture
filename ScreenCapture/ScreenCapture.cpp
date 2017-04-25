@@ -240,7 +240,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		// Draw snapshoted image.
 		SetStretchBltMode(hdc, HALFTONE); // prevent distortion (STRETCH_DELETESCANS or HALFTONE)
 		StretchBlt(hdc, 0, 0, rcClient.right, rcClient.bottom - nStatusbarH,
-			g_screenshot.hdcSnapshot, 0, 0, g_screenshot.GetScreenResolutionX(), g_screenshot.GetScreenResolutionY(), SRCCOPY);
+			g_screenshot.hMemDC, 0, 0, g_screenshot.GetScreenResolutionX(), g_screenshot.GetScreenResolutionY(), SRCCOPY);
 
 		EndPaint(hWnd, &ps);
 		break;

@@ -12,8 +12,8 @@ Screenshot::Screenshot()
 
 Screenshot::~Screenshot()
 {
-	DeleteDC(hdcSnapshot);
-	DeleteObject(hbmSnapshot);
+	DeleteDC(hMemDC);
+	DeleteObject(hBitmapSnapshot);
 }
 
 void Screenshot::StartScreenshot(HWND hWnd)
@@ -25,23 +25,23 @@ void Screenshot::StartScreenshot(HWND hWnd)
 	// memory DC keeps a copy of this "snapshot" in the associated
 	// bitmap.
 	hdcScreen = CreateDC(TEXT("DISPLAY"), NULL, NULL, NULL);
-	if (hdcSnapshot == NULL) {
-		hdcSnapshot = CreateCompatibleDC(hdcScreen);
+	if (hMemDC == NULL) {
+		hMemDC = CreateCompatibleDC(hdcScreen);
 	}
 
 	// Create a compatible bitmap for hdcScreen.
-	if (hbmSnapshot == NULL) {
-		hbmSnapshot = CreateCompatibleBitmap(hdcScreen,
+	if (hBitmapSnapshot == NULL) {
+		hBitmapSnapshot = CreateCompatibleBitmap(hdcScreen,
 			GetDeviceCaps(hdcScreen, HORZRES),
 			GetDeviceCaps(hdcScreen, VERTRES));
 	}
 
-	if (hbmSnapshot == NULL) {
+	if (hBitmapSnapshot == NULL) {
 		MessageBox(hWnd, TEXT("Can't create a compatible bitmap."), TEXT("Error"), MB_OK);
 	}
 
 	// Select the bitmaps into the compatible DC.
-	if (!SelectObject(hdcSnapshot, hbmSnapshot)) {
+	if (!SelectObject(hMemDC, hBitmapSnapshot)) {
 		MessageBox(hWnd, TEXT("SelectObject Failed"), TEXT("Error"), MB_OK);
 	}
 
@@ -51,7 +51,7 @@ void Screenshot::StartScreenshot(HWND hWnd)
 
 	// Copy color data for the entire display into a
 	// bitmap that is selected into a compatible DC.
-	if (!BitBlt(hdcSnapshot, 0, 0, mResX, mResY, hdcScreen, 0, 0, SRCCOPY)) {
+	if (!BitBlt(hMemDC, 0, 0, mResX, mResY, hdcScreen, 0, 0, SRCCOPY)) {
 		MessageBox(hWnd, TEXT("BitBlt Failed"), TEXT("Error"), MB_OK);
 	}
 
@@ -61,7 +61,7 @@ void Screenshot::StartScreenshot(HWND hWnd)
 	// Copy Bitmap to Clipboard
 	OpenClipboard(hWnd);
 	EmptyClipboard();
-	SetClipboardData(CF_BITMAP, hbmSnapshot);
+	SetClipboardData(CF_BITMAP, hBitmapSnapshot);
 	CloseClipboard();
 
 	// Delete
@@ -101,7 +101,7 @@ void Screenshot::SaveScreenshot(WCHAR *imageType)
 	// Save image
 	CreateDirectory(imageDirname, NULL);
 	CImage image;
-	image.Attach(hbmSnapshot);
+	image.Attach(hBitmapSnapshot);
 	image.Save(imageFilename);
 }
 
