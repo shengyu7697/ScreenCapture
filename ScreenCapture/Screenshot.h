@@ -2,12 +2,13 @@
 class Screenshot
 {
 private:
-	HBITMAP hBitmapSnapshot = NULL;
-	int mResX = -1;
-	int mResY = -1;
+	HWND m_hWnd;
+	HBITMAP m_hBitmapSnapshot = NULL;
+	int m_ResX = -1;
+	int m_ResY = -1;
 
 public:
-	HDC hMemDC = NULL;
+	HDC m_hMemDC = NULL;
 
 private:
 	void GetScreenResolution();
@@ -17,7 +18,10 @@ public:
 	Screenshot();
 	~Screenshot();
 
-	void StartScreenshot(HWND hWnd);
+	void Init(HWND hWnd);
+	void StartScreenshot();
+	void StartFullScreenSnapshot(HWND hWnd);
+	void StartWindowSnapshot(HWND hWnd);
 	int GetScreenResolutionX();
 	int GetScreenResolutionY();
 	void SaveScreenshot(WCHAR *imageType);

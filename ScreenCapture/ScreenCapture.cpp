@@ -13,7 +13,8 @@
 #define BMP  1
 #define JPEG 2
 #define PNG  3
-#define HOTKEY_SNAPSHOT 1
+#define HOTKEY_SNAPSHOT_FULLSCREEN 1
+#define HOTKEY_SNAPSHOT_WINDOW 2
 
 // Global Variables:
 HINSTANCE g_hInst;								// current instance
@@ -166,10 +167,29 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case IDM_SELECTION:
 			break;
 		case IDM_WINDOW:
+			// Get focus window handle
+			SendMessage(g_hStatusbar, SB_SETTEXT, 1 | SBT_POPOUT, (LPARAM)TEXT("Screenshot ..."));
+			g_screenshot.StartWindowSnapshot(GetForegroundWindow());
+			PlaySound(TEXT("sound/shutter.wav"), NULL, SND_ASYNC);
+
+			SendMessage(g_hStatusbar, SB_SETTEXT, 1 | SBT_POPOUT, (LPARAM)TEXT("Save ..."));
+			if (g_imageType == PNG)
+				g_screenshot.SaveScreenshot(TEXT(".png"));
+			else if (g_imageType == JPEG)
+				g_screenshot.SaveScreenshot(TEXT(".jpg"));
+			else if (g_imageType == BMP)
+				g_screenshot.SaveScreenshot(TEXT(".bmp"));
+			else
+				g_screenshot.SaveScreenshot(TEXT(".png"));
+			SendMessage(g_hStatusbar, SB_SETTEXT, 1 | SBT_POPOUT, (LPARAM)TEXT("Saved"));
+
+			// Force window to repaint
+			InvalidateRect(hWnd, NULL, TRUE);
+			UpdateWindow(hWnd);
 			break;
 		case IDM_FULLSCREEN:
 			SendMessage(g_hStatusbar, SB_SETTEXT, 1 | SBT_POPOUT, (LPARAM)TEXT("Screenshot ..."));
-			g_screenshot.StartScreenshot(hWnd);
+			g_screenshot.StartScreenshot();
 			PlaySound(TEXT("sound/shutter.wav"), NULL, SND_ASYNC);
 
 			SendMessage(g_hStatusbar, SB_SETTEXT, 1 | SBT_POPOUT, (LPARAM)TEXT("Save ..."));
@@ -221,8 +241,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_HOTKEY:
 		switch (wParam)
 		{
-		case HOTKEY_SNAPSHOT:
+		case HOTKEY_SNAPSHOT_FULLSCREEN:
 			SendMessage(hWnd, WM_COMMAND, IDM_FULLSCREEN, 0);
+			break;
+		case HOTKEY_SNAPSHOT_WINDOW:
+			SendMessage(hWnd, WM_COMMAND, IDM_WINDOW, 0);
 			break;
 		}
 		break;
@@ -240,7 +263,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		// Draw snapshoted image.
 		SetStretchBltMode(hdc, HALFTONE); // prevent distortion (STRETCH_DELETESCANS or HALFTONE)
 		StretchBlt(hdc, 0, 0, rcClient.right, rcClient.bottom - nStatusbarH,
-			g_screenshot.hMemDC, 0, 0, g_screenshot.GetScreenResolutionX(), g_screenshot.GetScreenResolutionY(), SRCCOPY);
+			g_screenshot.m_hMemDC, 0, 0, g_screenshot.GetScreenResolutionX(), g_screenshot.GetScreenResolutionY(), SRCCOPY);
 
 		EndPaint(hWnd, &ps);
 		break;
@@ -257,8 +280,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		SendMessage(g_hStatusbar, SB_SETTEXT, 0, (LPARAM)TEXT("Press PrintScreen or Ctrl+F1 to Capture Screen."));
 
 		// Register hot key.
-		RegisterHotKey(hWnd, HOTKEY_SNAPSHOT, MOD_NOREPEAT, VK_SNAPSHOT);
-		RegisterHotKey(hWnd, HOTKEY_SNAPSHOT, MOD_CONTROL, VK_F1);
+		RegisterHotKey(hWnd, HOTKEY_SNAPSHOT_FULLSCREEN, MOD_NOREPEAT, VK_SNAPSHOT);
+		RegisterHotKey(hWnd, HOTKEY_SNAPSHOT_FULLSCREEN, MOD_CONTROL, VK_F1);
+		RegisterHotKey(hWnd, HOTKEY_SNAPSHOT_WINDOW, MOD_ALT, VK_SNAPSHOT);
 
 		// Set default image type
 		SendMessage(hWnd, WM_COMMAND, IDM_IMAGETYPE_PNG, 0);
@@ -267,6 +291,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		EnableMenuItem(g_hMenu, IDM_SELECTION, MF_DISABLED);
 		EnableMenuItem(g_hMenu, IDM_WINDOW, MF_DISABLED);
 		EnableMenuItem(g_hMenu, IDM_IMAGEFOLDER, MF_DISABLED);
+
+		// Init Screenshot
+		g_screenshot.Init(hWnd);
 		}
 		break;
 	case WM_DESTROY:
