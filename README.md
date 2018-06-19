@@ -14,7 +14,7 @@ ScreenCapture is a tool that can take a screenshot and auto save images.
 Windows 7, XP  
 
 ## Develop Environment
-Visual studio 2010  
+Visual studio 2015  
 
 ## License
 ScreenCapture is published under the MIT license.  
