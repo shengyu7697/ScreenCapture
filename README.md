@@ -1,8 +1,7 @@
 ScreenCapture
 =============
-
-## Introduction
 ScreenCapture is a tool that can take a screenshot and auto save images.  
+
 ![screenshot](https://raw.github.com/shengyu7697/ScreenCapture/master/screenshot/screenshot.png)  
 
 ## Features
